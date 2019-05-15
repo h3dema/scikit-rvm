@@ -1,4 +1,8 @@
-"""Relevance Vector Machine classes for regression and classification."""
+"""Relevance Vector Machine classes for regression and classification.
+
+    kernels = rbf, linear, poly, chi2, laplacian, sigmoid
+
+"""
 import numpy as np
 
 from scipy.optimize import minimize
@@ -8,7 +12,10 @@ from sklearn.base import BaseEstimator, RegressorMixin, ClassifierMixin
 from sklearn.metrics.pairwise import (
     linear_kernel,
     rbf_kernel,
-    polynomial_kernel
+    polynomial_kernel,
+    chi2_kernel,
+    sigmoid_kernel,
+    laplacian_kernel
 )
 from sklearn.multiclass import OneVsOneClassifier
 from sklearn.utils.validation import check_X_y
@@ -36,13 +43,15 @@ class BaseRVM(BaseEstimator):
         beta=1.e-6,
         beta_fixed=False,
         bias_used=True,
-        verbose=False
+        verbose=False,
+        gamma=None,
     ):
         """Copy params to object properties, no validation."""
         self.kernel = kernel
         self.degree = degree
         self.coef1 = coef1
         self.coef0 = coef0
+        self.gamma = gamma
         self.n_iter = n_iter
         self.tol = tol
         self.alpha = alpha
@@ -59,6 +68,7 @@ class BaseRVM(BaseEstimator):
             'degree': self.degree,
             'coef1': self.coef1,
             'coef0': self.coef0,
+            'gamma': self.gamma,
             'n_iter': self.n_iter,
             'tol': self.tol,
             'alpha': self.alpha,
@@ -84,6 +94,14 @@ class BaseRVM(BaseEstimator):
             phi = rbf_kernel(x, y, self.coef1)
         elif self.kernel == 'poly':
             phi = polynomial_kernel(x, y, self.degree, self.coef1, self.coef0)
+        elif self.kernel == 'sigmoid':
+            coef0 = self.coef0 if self.coef0 is not None else 1
+            phi = sigmoid_kernel(x, y, self.gamma, coef0)
+        elif self.kernel == 'chi2':
+            gamma = self.gamma if self.gamma is not None else 1
+            phi = chi2_kernel(x, y, self.gamma)
+        elif self.kernel == 'laplacian':
+            phi = laplacian_kernel(x, y, self.gamma)
         elif callable(self.kernel):
             phi = self.kernel(x, y)
             if len(phi.shape) != 2:
